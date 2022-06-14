@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react'; // useState
 import { useIntl } from 'react-intl';
 import styled from 'styled-components';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useHistory } from 'react-router-dom';
 import { stringify } from 'qs';
 import {
   LoadingIndicatorPage,
@@ -36,6 +36,7 @@ import { useFolders } from '../../hooks/useFolders';
 import { getTrad, containsAssetFilter } from '../../utils';
 import { PaginationFooter } from '../../components/PaginationFooter';
 import { useMediaLibraryPermissions } from '../../hooks/useMediaLibraryPermissions';
+import { useFolder } from '../../hooks/useFolder';
 import { EmptyAssets } from '../../components/EmptyAssets';
 import { BulkActions } from './components/BulkActions';
 import {
@@ -58,6 +59,7 @@ const TypographyMaxWidth = styled(Typography)`
 `;
 
 export const MediaLibrary = () => {
+  const { push } = useHistory();
   const {
     canRead,
     canCreate,
@@ -82,10 +84,29 @@ export const MediaLibrary = () => {
     query,
   });
 
+  const {
+    data: currentFolder,
+    isLoading: isCurrentFolderLoading,
+    error: currentFolderError,
+  } = useFolder(query?.folder, {
+    enabled: !!query?.folder,
+  });
+
+  console.log(currentFolder);
+
+  if (currentFolderError?.response?.status === 404) {
+    const queryParamsWithoutFolder = {
+      ...query,
+      folder: undefined,
+    };
+
+    push(`${pathname}?${stringify(queryParamsWithoutFolder)}`);
+  }
+
   const folderCount = folders?.length || 0;
   const assets = assetsData?.results;
   const assetCount = assets?.length ?? 0;
-  const isLoading = foldersLoading || permissionsLoading || assetsLoading;
+  const isLoading = isCurrentFolderLoading || foldersLoading || permissionsLoading || assetsLoading;
   const [showUploadAssetDialog, setShowUploadAssetDialog] = useState(false);
   const [showEditFolderDialog, setShowEditFolderDialog] = useState(false);
   const [assetToEdit, setAssetToEdit] = useState(undefined);
@@ -135,6 +156,7 @@ export const MediaLibrary = () => {
           canCreate={canCreate}
           onToggleEditFolderDialog={toggleEditFolderDialog}
           onToggleUploadAssetDialog={toggleUploadAssetDialog}
+          folder={currentFolder}
         />
         <ActionLayout
           startActions={
